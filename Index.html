@@ -1,0 +1,519 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cook&Learn — Secure Cooking App (Demo)</title>
+  <style>
+    :root {
+      --bg: #0f172a;          /* slate-900 */
+      --card: #111827;        /* gray-900 */
+      --muted: #94a3b8;       /* slate-400 */
+      --text: #e2e8f0;        /* slate-200 */
+      --brand: #22d3ee;       /* cyan-400 */
+      --accent: #34d399;      /* emerald-400 */
+      --warn: #fbbf24;        /* amber-400 */
+      --danger: #fb7185;      /* rose-400 */
+      --ok: #86efac;          /* green-300 */
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: radial-gradient(1200px 800px at 10% 10%, #0b1220, var(--bg));
+      color: var(--text);
+    }
+    a { color: var(--brand); text-decoration: none; }
+    .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+    header {
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      padding: 16px 0 8px; position: sticky; top: 0; background: linear-gradient(180deg, rgba(15,23,42,.95), rgba(15,23,42,.7), rgba(15,23,42,0)); backdrop-filter: blur(6px); z-index: 10;
+    }
+    .logo { display: flex; align-items: center; gap: 12px; font-weight: 800; letter-spacing: .2px; }
+    .logo .badge { width: 36px; height: 36px; border-radius: 12px; display: grid; place-items: center; background: linear-gradient(135deg, var(--brand), var(--accent)); color: #002b36; font-weight: 900; }
+    .controls { display: flex; align-items: center; gap: 8px; }
+    .btn {
+      border: 0; padding: 10px 14px; border-radius: 999px; font-weight: 700; cursor: pointer; transition: transform .05s ease, background .2s ease, opacity .2s ease;
+      background: #1f2937; color: var(--text); box-shadow: var(--shadow);
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .btn.primary { background: linear-gradient(135deg, var(--brand), #60a5fa); color: #0b1220; }
+    .btn.ghost { background: transparent; border: 1px solid #334155; }
+
+    /* Auth Card */
+    .center { display: grid; place-items: center; min-height: 90vh; }
+    .card { width: 100%; max-width: 720px; background: linear-gradient(180deg, #0b1220, var(--card)); border: 1px solid #1f2937; border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+    .card header { position: relative; background: linear-gradient(135deg, rgba(34,211,238,.25), rgba(52,211,153,.15)); padding: 18px 22px; }
+    .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; background: rgba(2,6,23,.4); padding: 6px; border-radius: 999px; width: fit-content; }
+    .tab { padding: 10px 18px; border-radius: 999px; cursor: pointer; user-select: none; font-weight: 700; color: var(--muted); }
+    .tab.active { background: #111827; color: var(--text); }
+    .card .content { padding: 22px; }
+    form { display: grid; gap: 14px; }
+    label { font-size: 14px; color: var(--muted); }
+    input, textarea, select {
+      width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid #334155; background: #0b1220; color: var(--text);
+    }
+    .row { display: grid; gap: 12px; }
+    @media (min-width: 640px) { .row.two { grid-template-columns: 1fr 1fr; } }
+    .hint { font-size: 12px; color: var(--muted); }
+    .badge-pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 999px; background: #0b1220; border: 1px dashed #334155; color: var(--muted); font-size: 12px; }
+
+    /* Strength meter */
+    .meter { height: 10px; background: #0b1220; border: 1px solid #334155; border-radius: 999px; overflow: hidden; }
+    .meter > span { display: block; height: 100%; width: 0%; transition: width .25s ease; }
+
+    .list { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+    .tile { background: #0b1220; border: 1px solid #1f2937; border-radius: 16px; padding: 14px; box-shadow: var(--shadow); display: grid; gap: 10px; }
+    .tile h3 { margin: 0; }
+    .toolbar { display: flex; gap: 8px; flex-wrap: wrap; }
+    .searchbar { display: flex; gap: 8px; }
+
+    .hidden { display: none !important; }
+    footer { color: var(--muted); text-align: center; padding: 24px 8px; }
+    .chip { font-size: 11px; background:#0b1220; border:1px solid #334155; padding:4px 8px; border-radius:999px; }
+  </style>
+</head>
+<body>
+  <header class="container">
+    <div class="logo">
+      <div class="badge">CL</div>
+      <div>
+        <div>Cook&Learn</div>
+        <small class="hint">Learn every dish • Watch & share videos</small>
+      </div>
+    </div>
+    <div class="controls">
+      <button id="logoutBtn" class="btn ghost hidden">Log out</button>
+      <button id="openAuthBtn" class="btn primary hidden">Sign in</button>
+    </div>
+  </header>
+
+  <!-- AUTH VIEW -->
+  <main id="authView" class="center">
+    <section class="card" aria-labelledby="authHeading">
+      <header>
+        <div class="tabs" role="tablist">
+          <div class="tab active" role="tab" aria-selected="true" id="tab-login">Login</div>
+          <div class="tab" role="tab" aria-selected="false" id="tab-register">Register</div>
+        </div>
+      </header>
+      <div class="content">
+        <h2 id="authHeading" class="hidden">Authentication</h2>
+        <!-- LOGIN FORM -->
+        <form id="loginForm" autocomplete="off">
+          <div class="row two">
+            <div>
+              <label for="loginEmail">Email</label>
+              <input id="loginEmail" type="email" required placeholder="you@example.com" />
+            </div>
+            <div>
+              <label for="loginPassword">Password</label>
+              <div style="position:relative;">
+                <input id="loginPassword" type="password" required placeholder="Your strong password" />
+                <button type="button" class="btn ghost" style="position:absolute; right:6px; top:6px; padding:6px 10px;" data-toggle="loginPassword">Show</button>
+              </div>
+            </div>
+          </div>
+          <small class="hint">For demo only: accounts are stored locally in your browser using a secure hash. Use a unique password, not a real one.</small>
+          <div>
+            <button class="btn primary" type="submit">Login</button>
+          </div>
+        </form>
+
+        <!-- REGISTER FORM -->
+        <form id="registerForm" class="hidden" autocomplete="off">
+          <div class="row two">
+            <div>
+              <label for="regName">Full name</label>
+              <input id="regName" type="text" required placeholder="Priya Sharma" />
+            </div>
+            <div>
+              <label for="regEmail">Email</label>
+              <input id="regEmail" type="email" required placeholder="you@example.com" />
+            </div>
+          </div>
+
+          <div class="row two">
+            <div>
+              <label for="regPassword">Create password</label>
+              <div style="position:relative;">
+                <input id="regPassword" type="password" required placeholder="At least 12 characters" aria-describedby="pwHelp" />
+                <button type="button" class="btn ghost" style="position:absolute; right:6px; top:6px; padding:6px 10px;" data-toggle="regPassword">Show</button>
+              </div>
+              <div id="pwHelp" class="hint">Must include: uppercase, lowercase, number, special character • Minimum 12 characters • Avoid common words.</div>
+            </div>
+            <div>
+              <label for="regPassword2">Confirm password</label>
+              <input id="regPassword2" type="password" required placeholder="Re-enter password" />
+            </div>
+          </div>
+
+          <div class="meter" aria-hidden="true" title="Password strength">
+            <span id="strengthBar"></span>
+          </div>
+          <div id="strengthMessage" class="hint">Strength: —</div>
+
+          <div>
+            <button class="btn primary" type="submit">Create account</button>
+          </div>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <!-- APP VIEW -->
+  <main id="appView" class="container hidden" aria-live="polite">
+    <section class="tile">
+      <div class="toolbar">
+        <div class="searchbar" role="search">
+          <input id="search" type="search" placeholder="Search dishes... (e.g., biryani, pasta, dosa)" />
+          <button id="clearSearch" class="btn ghost" type="button">Clear</button>
+        </div>
+        <span class="chip" id="welcomeChip"></span>
+        <span class="chip">Secure mode</span>
+      </div>
+    </section>
+
+    <section class="row two" style="margin-top: 14px; align-items:start;">
+      <div class="tile">
+        <h2>Dishes & Recipes</h2>
+        <p class="hint">Curated step-by-step guides from the community.</p>
+        <div id="recipeList" class="list" role="list"></div>
+        <details>
+          <summary class="hint">Add a new recipe</summary>
+          <form id="addRecipeForm">
+            <div class="row two">
+              <input id="rTitle" placeholder="Dish title (e.g., Masala Dosa)" required />
+              <input id="rCuisine" placeholder="Cuisine (e.g., South Indian)" required />
+            </div>
+            <textarea id="rSteps" rows="4" placeholder="Steps (one per line)" required></textarea>
+            <button class="btn" type="submit">Add recipe</button>
+          </form>
+        </details>
+      </div>
+
+      <div class="tile">
+        <h2>Video Tutorials</h2>
+        <p class="hint">Creators can share short videos to help learners.</p>
+        <div id="videoList" class="list" role="list"></div>
+        <details>
+          <summary class="hint">Add a video (YouTube/Vimeo URL)</summary>
+          <form id="addVideoForm">
+            <input id="vTitle" placeholder="Video title" required />
+            <input id="vUrl" placeholder="https://www.youtube.com/watch?v=..." required />
+            <button class="btn" type="submit">Add video</button>
+          </form>
+        </details>
+      </div>
+    </section>
+
+    <footer>
+      <small>Demo app — for production, use a real backend (OAuth/JWT), enforce HTTPS, rate limiting, and server-side password hashing.</small>
+    </footer>
+  </main>
+
+  <template id="recipeTemplate">
+    <article class="tile" role="listitem">
+      <h3></h3>
+      <div class="hint"></div>
+      <ol></ol>
+    </article>
+  </template>
+
+  <template id="videoTemplate">
+    <article class="tile" role="listitem">
+      <h3></h3>
+      <div class="videoWrap" style="position:relative; padding-bottom:56.25%; height:0; overflow:hidden; border-radius:12px; border:1px solid #334155;">
+        <iframe title="Tutorial video" allowfullscreen style="position:absolute; top:0; left:0; width:100%; height:100%; border:0;"></iframe>
+      </div>
+    </article>
+  </template>
+
+  <script>
+    // ---------- Utilities ----------
+    const $ = (sel, el=document) => el.querySelector(sel);
+    const $$ = (sel, el=document) => Array.from(el.querySelectorAll(sel));
+
+    const storage = {
+      get(key, fallback) {
+        try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; }
+      },
+      set(key, val) { localStorage.setItem(key, JSON.stringify(val)); },
+    };
+
+    // Hash a string using SHA-256 via Web Crypto API
+    async function sha256(text) {
+      const enc = new TextEncoder();
+      const buf = await crypto.subtle.digest('SHA-256', enc.encode(text));
+      return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    // Basic password strength assessment
+    function assessStrength(pw, email="") {
+      const requirements = {
+        length: pw.length >= 12,
+        upper: /[A-Z]/.test(pw),
+        lower: /[a-z]/.test(pw),
+        digit: /\d/.test(pw),
+        special: /[^\w\s]/.test(pw),
+        notEmail: !email || !pw.toLowerCase().includes(email.split('@')[0]?.toLowerCase() ?? ""),
+        noRepeats: !/(.)\1{2,}/.test(pw),
+      };
+      // crude entropy estimate
+      let charset = 0;
+      if (/[a-z]/.test(pw)) charset += 26;
+      if (/[A-Z]/.test(pw)) charset += 26;
+      if (/\d/.test(pw)) charset += 10;
+      if (/[^\w\s]/.test(pw)) charset += 33; // printable specials approx
+      const entropy = Math.log2(Math.max(1, charset)) * pw.length;
+      // score: 0-4
+      let score = 0;
+      if (requirements.length) score++;
+      if (requirements.upper && requirements.lower) score++;
+      if (requirements.digit) score++;
+      if (requirements.special) score++;
+      if (entropy >= 60) score++; // ~very strong
+      return {requirements, entropy, score: Math.min(score,4)};
+    }
+
+    function updateStrengthUI(pw, email) {
+      const { requirements, entropy, score } = assessStrength(pw, email);
+      const bar = $('#strengthBar');
+      const msg = $('#strengthMessage');
+      const percent = [0, 25, 50, 75, 100][score];
+      bar.style.width = percent + '%';
+      bar.style.background = score >= 3 ? 'linear-gradient(90deg, var(--accent), var(--ok))' : (score >= 2 ? 'linear-gradient(90deg, var(--warn), #fde68a)' : 'linear-gradient(90deg, var(--danger), #fecdd3)');
+      const checklist = [
+        requirements.length ? '≥12 chars' : 'need ≥12 chars',
+        requirements.upper && requirements.lower ? 'mix case' : 'add upper+lower',
+        requirements.digit ? 'number' : 'add a number',
+        requirements.special ? 'special' : 'add special',
+        requirements.noRepeats ? '' : 'avoid repeats',
+      ].filter(Boolean);
+      msg.textContent = `Strength: ${['very weak','weak','okay','strong','very strong'][score]} • Entropy≈${entropy.toFixed(0)} bits • ${checklist.join(' · ')}`;
+    }
+
+    function show(el) { el.classList.remove('hidden'); }
+    function hide(el) { el.classList.add('hidden'); }
+
+    function setSession(user) {
+      sessionStorage.setItem('cook_user', JSON.stringify({ email: user.email, name: user.name }));
+      $('#welcomeChip').textContent = `Welcome, ${user.name}`;
+      hide($('#authView')); show($('#appView'));
+      show($('#logoutBtn')); hide($('#openAuthBtn'));
+      renderData();
+    }
+
+    function clearSession() {
+      sessionStorage.removeItem('cook_user');
+      show($('#authView')); hide($('#appView'));
+      hide($('#logoutBtn')); show($('#openAuthBtn'));
+      $('#loginForm').reset();
+    }
+
+    // ---------- Seed demo data ----------
+    const seedRecipes = [
+      { title: 'Hyderabadi Chicken Biryani', cuisine: 'Indian', steps: ['Marinate chicken with yogurt, spices, and fried onions (min 2 hrs).', 'Parboil basmati rice with whole spices and salt.', 'Layer chicken and rice; add saffron milk + ghee.', 'Dum on low heat 25–30 mins; rest 10 mins; fluff and serve.'] },
+      { title: 'Classic Margherita Pizza', cuisine: 'Italian', steps: ['Stretch dough to 10–12 inch.', 'Spread crushed tomatoes lightly.', 'Add fresh mozzarella + basil.', 'Bake at highest heat until blistered; drizzle olive oil.'] },
+      { title: 'Masala Dosa', cuisine: 'South Indian', steps: ['Ferment rice+urad batter overnight.', 'Spread thin on hot tawa with ghee.', 'Fill with spiced potato masala.', 'Serve with sambar & coconut chutney.'] },
+    ];
+    const seedVideos = [
+      { title: 'Perfect Chapati Puff — Tips & Tricks', url: 'https://www.youtube.com/embed/tgbNymZ7vqY' },
+      { title: 'Knife Skills 101: Chop Like a Pro', url: 'https://www.youtube.com/embed/dQw4w9WgXcQ' },
+    ];
+
+    // ---------- Renderers ----------
+    function renderData(filter='') {
+      const recipes = storage.get('recipes', seedRecipes);
+      const videos = storage.get('videos', seedVideos);
+
+      const list = $('#recipeList');
+      list.innerHTML = '';
+      recipes
+        .filter(r => (r.title + ' ' + r.cuisine + ' ' + r.steps.join(' ')).toLowerCase().includes(filter.toLowerCase()))
+        .forEach(r => {
+          const tpl = $('#recipeTemplate').content.cloneNode(true);
+          tpl.querySelector('h3').textContent = r.title;
+          tpl.querySelector('.hint').textContent = r.cuisine;
+          const ol = tpl.querySelector('ol');
+          r.steps.forEach(s => { const li = document.createElement('li'); li.textContent = s; ol.appendChild(li); });
+          list.appendChild(tpl);
+        });
+
+      const vlist = $('#videoList');
+      vlist.innerHTML = '';
+      videos
+        .filter(v => (v.title + ' ' + v.url).toLowerCase().includes(filter.toLowerCase()))
+        .forEach(v => {
+          const tpl = $('#videoTemplate').content.cloneNode(true);
+          tpl.querySelector('h3').textContent = v.title;
+          tpl.querySelector('iframe').src = toEmbedUrl(v.url);
+          vlist.appendChild(tpl);
+        });
+    }
+
+    function toEmbedUrl(url) {
+      try {
+        const u = new URL(url);
+        if (u.hostname.includes('youtube.com')) {
+          const id = u.searchParams.get('v');
+          return `https://www.youtube.com/embed/${id}`;
+        }
+        if (u.hostname.includes('youtu.be')) {
+          return `https://www.youtube.com/embed/${u.pathname.slice(1)}`;
+        }
+        return url; // naive fallback
+      } catch { return url; }
+    }
+
+    // ---------- Auth logic (demo) ----------
+    const USERS_KEY = 'cook_users_v1';
+
+    async function register({ name, email, password }) {
+      const users = storage.get(USERS_KEY, {});
+      const emailKey = email.toLowerCase();
+      if (users[emailKey]) throw new Error('Account already exists. Please log in.');
+      const { score } = assessStrength(password, email);
+      if (score < 3) throw new Error('Password is not strong enough. Make it strong (≥12 chars, mix case, number, special).');
+      const salt = crypto.getRandomValues(new Uint8Array(16));
+      const saltHex = [...salt].map(b => b.toString(16).padStart(2,'0')).join('');
+      const hash = await sha256(password + ':' + saltHex);
+      users[emailKey] = { name, email: emailKey, hash, salt: saltHex, createdAt: Date.now() };
+      storage.set(USERS_KEY, users);
+      return users[emailKey];
+    }
+
+    async function login({ email, password }) {
+      const users = storage.get(USERS_KEY, {});
+      const emailKey = email.toLowerCase();
+      const record = users[emailKey];
+      if (!record) throw new Error('No account found. Please register.');
+      const hash = await sha256(password + ':' + record.salt);
+      if (hash !== record.hash) throw new Error('Invalid credentials.');
+      return record;
+    }
+
+    // ---------- Event wiring ----------
+    function setup() {
+      // Tabs
+      const loginTab = $('#tab-login');
+      const registerTab = $('#tab-register');
+      const loginForm = $('#loginForm');
+      const registerForm = $('#registerForm');
+
+      function activate(tab) {
+        if (tab === 'login') {
+          loginTab.classList.add('active'); registerTab.classList.remove('active');
+          show(loginForm); hide(registerForm);
+        } else {
+          registerTab.classList.add('active'); loginTab.classList.remove('active');
+          show(registerForm); hide(loginForm);
+        }
+      }
+      loginTab.addEventListener('click', () => activate('login'));
+      registerTab.addEventListener('click', () => activate('register'));
+
+      // Strength meter
+      $('#regPassword').addEventListener('input', (e) => updateStrengthUI(e.target.value, $('#regEmail').value));
+      $('#regEmail').addEventListener('input', () => updateStrengthUI($('#regPassword').value, $('#regEmail').value));
+
+      // Toggle visibility buttons
+      $$('[data-toggle]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-toggle');
+          const inp = document.getElementById(id);
+          const type = inp.getAttribute('type') === 'password' ? 'text' : 'password';
+          inp.setAttribute('type', type);
+          btn.textContent = type === 'password' ? 'Show' : 'Hide';
+        });
+      });
+
+      // Register
+      registerForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = $('#regName').value.trim();
+        const email = $('#regEmail').value.trim();
+        const pw1 = $('#regPassword').value;
+        const pw2 = $('#regPassword2').value;
+        try {
+          if (pw1 !== pw2) throw new Error('Passwords do not match.');
+          const user = await register({ name, email, password: pw1 });
+          alert('Account created! You are now signed in.');
+          setSession(user);
+        } catch (err) { alert(err.message || 'Registration failed.'); }
+      });
+
+      // Login
+      loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = $('#loginEmail').value.trim();
+        const password = $('#loginPassword').value;
+        try {
+          const user = await login({ email, password });
+          setSession(user);
+        } catch (err) { alert(err.message || 'Login failed.'); }
+      });
+
+      // Logout
+      $('#logoutBtn').addEventListener('click', () => { clearSession(); });
+      $('#openAuthBtn').addEventListener('click', () => { clearSession(); });
+
+      // Search
+      $('#search').addEventListener('input', e => renderData(e.target.value));
+      $('#clearSearch').addEventListener('click', () => { $('#search').value = ''; renderData(''); });
+
+      // Add recipe
+      $('#addRecipeForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const title = $('#rTitle').value.trim();
+        const cuisine = $('#rCuisine').value.trim();
+        const steps = $('#rSteps').value.split(/\n+/).map(s => s.trim()).filter(Boolean);
+        const recipes = storage.get('recipes', seedRecipes);
+        recipes.unshift({ title, cuisine, steps });
+        storage.set('recipes', recipes);
+        e.target.reset();
+        renderData($('#search').value);
+      });
+
+      // Add video
+      $('#addVideoForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const title = $('#vTitle').value.trim();
+        const url = $('#vUrl').value.trim();
+        const videos = storage.get('videos', seedVideos);
+        videos.unshift({ title, url });
+        storage.set('videos', videos);
+        e.target.reset();
+        renderData($('#search').value);
+      });
+
+      // Auto mode based on existing account
+      const users = storage.get(USERS_KEY, {});
+      if (Object.keys(users).length === 0) {
+        activate('register');
+        hide($('#openAuthBtn'));
+      } else {
+        activate('login');
+        show($('#openAuthBtn'));
+      }
+
+      // Restore session if present
+      const sess = sessionStorage.getItem('cook_user');
+      if (sess) {
+        const user = JSON.parse(sess);
+        setSession(user);
+      } else {
+        clearSession();
+      }
+
+      // Initial render
+      renderData();
+      updateStrengthUI('', '');
+    }
+
+    document.addEventListener('DOMContentLoaded', setup);
+  </script>
+</body>
+</html>
